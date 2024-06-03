@@ -2,18 +2,25 @@ import RaydiumSwap from './RaydiumSwap';
 import { Transaction, VersionedTransaction } from '@solana/web3.js';
 import 'dotenv/config';
 import { swapConfig } from './swapConfig'; // Import the configuration
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+
+const argv = yargs(hideBin(process.argv)).argv;
+const tokenAAddress = argv.tokenAAddress as string;
+const tokenBAddress = argv.tokenBAddress as string;
+const direction = argv.direction as 'in' | 'out';
 
 /**
  * Performs a token swap on the Raydium protocol.
  * Depending on the configuration, it can execute the swap or simulate it.
  */
-const swap = async () => {
+const swap = async (tokenAAddress: string, tokenBAddress: string, direction: 'in' | 'out') => {
   /**
    * The RaydiumSwap instance for handling swaps.
    */
   const raydiumSwap = new RaydiumSwap(process.env.RPC_URL, process.env.WALLET_PRIVATE_KEY);
   console.log(`Raydium swap initialized`);
-  console.log(`Swapping ${swapConfig.tokenAAmount} of ${swapConfig.tokenAAddress} for ${swapConfig.tokenBAddress}...`)
+  console.log(`Swapping ${swapConfig.tokenAAmount} of ${tokenAAddress} for ${tokenBAddress}...`)
 
   /**
    * Load pool keys from the Raydium API to enable finding pool information.
@@ -24,49 +31,43 @@ const swap = async () => {
   /**
    * Find pool information for the given token pair.
    */
-  const poolInfo = raydiumSwap.findPoolInfoForTokens(swapConfig.tokenAAddress, swapConfig.tokenBAddress);
+  const poolInfo = raydiumSwap.findPoolInfoForTokens(tokenAAddress, tokenBAddress);
   if (!poolInfo) {
     console.error('Pool info not found');
+    process.exit(1);
     return 'Pool info not found';
   } else {
     console.log('Found pool info');
   }
 
-  /**
-   * Prepare the swap transaction with the given parameters.
-   */
-  const tx = await raydiumSwap.getSwapTransaction(
-    swapConfig.tokenBAddress,
-    swapConfig.tokenAAmount,
-    poolInfo,
-    swapConfig.maxLamports, 
-    swapConfig.useVersionedTransaction,
-    swapConfig.direction
-  );
+  try {
+    const tx = await raydiumSwap.getSwapTransaction(
+        tokenBAddress,
+        swapConfig.tokenAAmount,
+        poolInfo,
+        swapConfig.maxLamports,
+        swapConfig.useVersionedTransaction,
+        direction
+    );
 
-  /**
-   * Depending on the configuration, execute or simulate the swap.
-   */
-  if (swapConfig.executeSwap) {
-    /**
-     * Send the transaction to the network and log the transaction ID.
-     */
-    const txid = swapConfig.useVersionedTransaction
-      ? await raydiumSwap.sendVersionedTransaction(tx as VersionedTransaction, swapConfig.maxRetries)
-      : await raydiumSwap.sendLegacyTransaction(tx as Transaction, swapConfig.maxRetries);
+    if (swapConfig.executeSwap) {
+      const txid = swapConfig.useVersionedTransaction
+          ? await raydiumSwap.sendVersionedTransaction(tx as VersionedTransaction, swapConfig.maxRetries)
+          : await raydiumSwap.sendLegacyTransaction(tx as Transaction, swapConfig.maxRetries);
 
-    console.log(`https://solscan.io/tx/${txid}`);
+      console.log(`https://solscan.io/tx/${txid}`);
+    } else {
+      const simRes = swapConfig.useVersionedTransaction
+          ? await raydiumSwap.simulateVersionedTransaction(tx as VersionedTransaction)
+          : await raydiumSwap.simulateLegacyTransaction(tx as Transaction);
 
-  } else {
-    /**
-     * Simulate the transaction and log the result.
-     */
-    const simRes = swapConfig.useVersionedTransaction
-      ? await raydiumSwap.simulateVersionedTransaction(tx as VersionedTransaction)
-      : await raydiumSwap.simulateLegacyTransaction(tx as Transaction);
-
-    console.log(simRes);
+      console.log(simRes);
+    }
+  } catch (error) {
+    console.error('An error occurred:', error);
+    process.exit(1);
   }
 };
 
-swap();
+// usage yarn swap --tokenAAddress=my-custom-token-address --tokenBAddress=my-custom-token-address --direction=in
+swap(tokenAAddress, tokenBAddress, direction);
