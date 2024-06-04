@@ -8,19 +8,20 @@ import { hideBin } from 'yargs/helpers';
 const argv = yargs(hideBin(process.argv)).argv;
 const tokenAAddress = argv.tokenAAddress as string;
 const tokenBAddress = argv.tokenBAddress as string;
+const amount = parseFloat(argv.amount as string);
 const direction = argv.direction as 'in' | 'out';
 
 /**
  * Performs a token swap on the Raydium protocol.
  * Depending on the configuration, it can execute the swap or simulate it.
  */
-const swap = async (tokenAAddress: string, tokenBAddress: string, direction: 'in' | 'out') => {
+const swap = async (tokenAAddress: string, tokenBAddress: string, amount: number, direction: 'in' | 'out') => {
   /**
    * The RaydiumSwap instance for handling swaps.
    */
   const raydiumSwap = new RaydiumSwap(process.env.RPC_URL, process.env.WALLET_PRIVATE_KEY);
   console.log(`Raydium swap initialized`);
-  console.log(`Swapping ${swapConfig.tokenAAmount} of ${tokenAAddress} for ${tokenBAddress}...`)
+  console.log(`Swapping ${amount} of ${tokenAAddress} for ${tokenBAddress}...`)
 
   /**
    * Load pool keys from the Raydium API to enable finding pool information.
@@ -43,7 +44,7 @@ const swap = async (tokenAAddress: string, tokenBAddress: string, direction: 'in
   try {
     const tx = await raydiumSwap.getSwapTransaction(
         tokenBAddress,
-        swapConfig.tokenAAmount,
+        amount,
         poolInfo,
         swapConfig.maxLamports,
         swapConfig.useVersionedTransaction,
@@ -69,5 +70,5 @@ const swap = async (tokenAAddress: string, tokenBAddress: string, direction: 'in
   }
 };
 
-// usage yarn swap --tokenAAddress=my-custom-token-address --tokenBAddress=my-custom-token-address --direction=in
-swap(tokenAAddress, tokenBAddress, direction);
+// usage yarn swap --tokenAAddress=my-custom-token-address --tokenBAddress=my-custom-token-address --amount=0.1 --direction=in
+swap(tokenAAddress, tokenBAddress, amount, direction);
