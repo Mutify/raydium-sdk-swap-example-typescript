@@ -4,6 +4,7 @@ import 'dotenv/config';
 import { swapConfig } from './swapConfig'; // Import the configuration
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import { unlinkSync, existsSync, writeFileSync } from 'fs';
 
 const argv = yargs(hideBin(process.argv)).argv;
 const tokenAAddress = argv.tokenAAddress as string;
@@ -16,6 +17,11 @@ const direction = argv.direction as 'in' | 'out';
  * Depending on the configuration, it can execute the swap or simulate it.
  */
 const swap = async (tokenAAddress: string, tokenBAddress: string, amount: number, direction: 'in' | 'out') => {
+  // Remove the swapDetails.json file if it exists
+  if (existsSync('swapDetails.json')) {
+    unlinkSync('swapDetails.json');
+  }
+
   /**
    * The RaydiumSwap instance for handling swaps.
    */
@@ -42,7 +48,7 @@ const swap = async (tokenAAddress: string, tokenBAddress: string, amount: number
   }
 
   try {
-    const tx = await raydiumSwap.getSwapTransaction(
+    const {transaction: tx, swapDetails} = await raydiumSwap.getSwapTransaction(
         tokenBAddress,
         amount,
         poolInfo,
@@ -56,7 +62,22 @@ const swap = async (tokenAAddress: string, tokenBAddress: string, amount: number
           ? await raydiumSwap.sendVersionedTransaction(tx as VersionedTransaction, swapConfig.maxRetries)
           : await raydiumSwap.sendLegacyTransaction(tx as Transaction, swapConfig.maxRetries);
 
-      console.log(`https://solscan.io/tx/${txid}`);
+      const solScanUrl = `https://solscan.io/tx/${txid}`;
+      swapDetails.solScanUrl = solScanUrl;
+      const finalFile = {
+        solScanUrl: solScanUrl,
+        amountIn: parseInt(swapDetails.amountIn.numerator, 16) / parseInt(swapDetails.amountIn.denominator, 16),
+        amountOut: parseInt(swapDetails.amountOut.numerator, 16) / parseInt(swapDetails.amountOut.denominator, 16),
+        minAmountOut: parseInt(swapDetails.minAmountOut.numerator, 16) / parseInt(swapDetails.minAmountOut.denominator, 16),
+        fee: parseInt(swapDetails.fee.numerator, 16) / parseInt(swapDetails.fee.denominator, 16),
+        currentPrice: parseInt(swapDetails.currentPrice.numerator, 16) / parseInt(swapDetails.currentPrice.denominator, 16),
+        executionPrice: parseInt(swapDetails.executionPrice.numerator, 16) / parseInt(swapDetails.executionPrice.denominator, 16),
+        priceImpact: parseInt(swapDetails.priceImpact.numerator, 16) / parseInt(swapDetails.priceImpact.denominator, 16),
+      }
+      console.log(solScanUrl);
+
+      // Write the swapDetails object to a file
+      writeFileSync('swapDetails.json', JSON.stringify(finalFile));
     } else {
       const simRes = swapConfig.useVersionedTransaction
           ? await raydiumSwap.simulateVersionedTransaction(tx as VersionedTransaction)

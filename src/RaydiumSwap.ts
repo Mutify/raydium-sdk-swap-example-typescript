@@ -80,7 +80,7 @@ class RaydiumSwap {
     }))
   }
 
-    /**
+  /**
    * Builds a swap transaction.
    * @async
    * @param {string} toToken - The mint address of the token to receive.
@@ -99,9 +99,14 @@ class RaydiumSwap {
     maxLamports: number = 100000,
     useVersionedTransaction = true,
     fixedSide: 'in' | 'out' = 'in'
-  ): Promise<Transaction | VersionedTransaction> {
+  ): Promise<{transaction: Transaction | VersionedTransaction, swapDetails: any}> {
     const directionIn = poolKeys.quoteMint.toString() == toToken
-    const { minAmountOut, amountIn } = await this.calcAmountOut(poolKeys, amount, directionIn)
+    const swapDetails = await this.calcAmountOut(poolKeys, amount, directionIn)
+    console.log(swapDetails);
+
+    const minAmountOut = swapDetails.minAmountOut
+    const amountIn = swapDetails.amountIn
+
     console.log({ minAmountOut, amountIn });
     const userTokenAccounts = await this.getOwnerTokenAccounts()
     const swapTransaction = await Liquidity.makeSwapInstructionSimple({
@@ -139,7 +144,8 @@ class RaydiumSwap {
 
       versionedTransaction.sign([this.wallet.payer])
 
-      return versionedTransaction
+      return {transaction: versionedTransaction, swapDetails: swapDetails};
+      // return versionedTransaction
     }
 
     const legacyTransaction = new Transaction({
@@ -150,7 +156,8 @@ class RaydiumSwap {
 
     legacyTransaction.add(...instructions)
 
-    return legacyTransaction
+    return {transaction: legacyTransaction, swapDetails: swapDetails};
+    // return legacyTransaction
   }
 
     /**
@@ -259,15 +266,28 @@ class RaydiumSwap {
       slippage,
     })
 
-    return {
-      amountIn,
-      amountOut,
-      minAmountOut,
-      currentPrice,
-      executionPrice,
-      priceImpact,
-      fee,
+    // Convert the result to a JSON string
+    const result = {
+      amountIn: amountIn,
+      amountOut: amountOut,
+      minAmountOut: minAmountOut,
+      currentPrice: currentPrice,
+      executionPrice: executionPrice,
+      priceImpact: priceImpact,
+      fee: fee,
     }
+
+    return result
+
+    // return {
+    //   amountIn,
+    //   amountOut,
+    //   minAmountOut,
+    //   currentPrice,
+    //   executionPrice,
+    //   priceImpact,
+    //   fee,
+    // }
   }
 }
 
