@@ -24,7 +24,7 @@ const swap = async (tokenAAddress: string, tokenBAddress: string, amount: number
   }
 
   const wallets = {
-    1: '4BPXQidTyrEUqePXYJJKC3jgFfydYvnL4q8cprggx7tzzjxmdghKDkx9sjNPWwNAcZDQBdutW7SNzo19mFu3AoUC'
+    1: '...',
   };
 
   const walletPrivateKey = wallets[walletNumber];
