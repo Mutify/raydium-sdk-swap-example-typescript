@@ -11,21 +11,31 @@ const tokenAAddress = argv.tokenAAddress as string;
 const tokenBAddress = argv.tokenBAddress as string;
 const amount = parseFloat(argv.amount as string);
 const direction = argv.direction as 'in' | 'out';
+const walletNumber = parseInt(argv.walletNumber);
 
 /**
  * Performs a token swap on the Raydium protocol.
  * Depending on the configuration, it can execute the swap or simulate it.
  */
-const swap = async (tokenAAddress: string, tokenBAddress: string, amount: number, direction: 'in' | 'out') => {
+const swap = async (tokenAAddress: string, tokenBAddress: string, amount: number, direction: 'in' | 'out', walletNumber: number) => {
   // Remove the swapDetails.json file if it exists
   if (existsSync('swapDetails.json')) {
     unlinkSync('swapDetails.json');
   }
 
+  const wallets = {
+    1: '4BPXQidTyrEUqePXYJJKC3jgFfydYvnL4q8cprggx7tzzjxmdghKDkx9sjNPWwNAcZDQBdutW7SNzo19mFu3AoUC'
+  };
+
+  const walletPrivateKey = wallets[walletNumber];
+
+  console.log(`Using wallet private key number: ${walletNumber} which is: ${walletPrivateKey}`);
+
+
   /**
    * The RaydiumSwap instance for handling swaps.
    */
-  const raydiumSwap = new RaydiumSwap(process.env.RPC_URL, process.env.WALLET_PRIVATE_KEY);
+  const raydiumSwap = new RaydiumSwap(process.env.RPC_URL, walletPrivateKey);
   console.log(`Raydium swap initialized`);
   console.log(`Swapping ${amount} of ${tokenAAddress} for ${tokenBAddress}...`)
 
@@ -91,5 +101,52 @@ const swap = async (tokenAAddress: string, tokenBAddress: string, amount: number
   }
 };
 
+// Function to generate a random number between min and max
+const getRandom = (min: number, max: number) => {
+  return Math.random() * (max - min) + min;
+}
+
+// Function to sleep for a random duration between min and max seconds
+const sleepRandom = async (min: number, max: number) => {
+  const ms = getRandom(min, max) * 1000;
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// The while loop
+// while (true) {
+//   const amount2 = getRandom(0.000073, 0.000727);
+//   swap(tokenAAddress, tokenBAddress, amount2, direction, walletNumber);
+  //     .then(() => sleepRandom(5, 10))
+  //     .then(() => console.log('Cycle completed'))
+  //     .catch(error => console.error('An error occurred:', error));
+  //
+  // sleepRandom(5, 10).then(() => console.log('Sleeping...'));
+// }
+
+
 // usage yarn swap --tokenAAddress=my-custom-token-address --tokenBAddress=my-custom-token-address --amount=0.1 --direction=in
-swap(tokenAAddress, tokenBAddress, amount, direction);
+// swap(tokenAAddress, tokenBAddress, amount, direction, walletNumber);
+
+function roundToDecimals(value: number, decimals: number): number {
+  const factor = Math.pow(10, decimals);
+  return Math.round(value * factor) / factor;
+}
+
+const swapWrap = async () => {
+  const amount2 = getRandom(0.000073, 0.000727);
+  const roundedSolAmount = roundToDecimals(amount2, 9);
+  // await swap(tokenAAddress, tokenBAddress, roundedSolAmount, direction, walletNumber);
+  console.log("Swapping amount: ", roundedSolAmount, " of token: ", tokenAAddress, " for token: ", tokenBAddress, " with direction: ", direction, " using wallet number: ", walletNumber);
+  // sleep 10 seconds
+  await sleepRandom(2, 6);
+}
+
+const main = async () => {
+  while (true) {
+    await swapWrap().catch((err) => {
+      console.error(err);
+    });
+  }
+}
+
+main();
