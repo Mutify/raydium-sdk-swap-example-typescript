@@ -138,7 +138,7 @@ const swapWrap = async () => {
   // await swap(tokenAAddress, tokenBAddress, roundedSolAmount, direction, walletNumber);
   console.log("Swapping amount: ", roundedSolAmount, " of token: ", tokenAAddress, " for token: ", tokenBAddress, " with direction: ", direction, " using wallet number: ", walletNumber);
   // sleep 10 seconds
-  await sleepRandom(2, 6);
+  await sleepRandom(10, 25);
 }
 
 const main = async () => {
