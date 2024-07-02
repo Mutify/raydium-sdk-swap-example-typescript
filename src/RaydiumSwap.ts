@@ -13,6 +13,8 @@ import {
 } from '@raydium-io/raydium-sdk'
 import { Wallet } from '@coral-xyz/anchor'
 import bs58 from 'bs58'
+import { promises as fsPromises } from 'fs';
+import fetch from 'node-fetch';
 
 /**
  * Class representing a Raydium Swap operation.
@@ -33,12 +35,30 @@ class RaydiumSwap {
     this.wallet = new Wallet(Keypair.fromSecretKey(Uint8Array.from(bs58.decode(WALLET_PRIVATE_KEY))))
   }
 
+  async loadPoolKeys(liquidityFile: string) {
+    let liquidityJson;
+
+    // Check if liquidityFile is a URL or a local file path
+    if (liquidityFile.startsWith('http://') || liquidityFile.startsWith('https://')) {
+      const liquidityJsonResp = await fetch(liquidityFile);
+      if (!liquidityJsonResp.ok) return;
+      liquidityJson = await liquidityJsonResp.json() as { official: any; unOfficial: any };
+    } else {
+      // It's a local file path, read the file content
+      const fileContent = await fsPromises.readFile(liquidityFile, 'utf-8');
+      liquidityJson = JSON.parse(fileContent) as { official: any; unOfficial: any };
+    }
+
+    const allPoolKeysJson = [...(liquidityJson?.official ?? []), ...(liquidityJson?.unOfficial ?? [])];
+    this.allPoolKeysJson = allPoolKeysJson;
+  }
+
    /**
    * Loads all the pool keys available from a JSON configuration file.
    * @async
    * @returns {Promise<void>}
    */
-  async loadPoolKeys(liquidityFile: string) {
+  async loadPoolKeys2(liquidityFile: string) {
     const liquidityJsonResp = await fetch(liquidityFile);
     if (!liquidityJsonResp.ok) return
     const liquidityJson = (await liquidityJsonResp.json()) as { official: any; unOfficial: any }

@@ -4,7 +4,9 @@ import 'dotenv/config';
 import { swapConfig } from './swapConfig'; // Import the configuration
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { unlinkSync, existsSync, writeFileSync } from 'fs';
+import { unlinkSync, existsSync, writeFileSync, readFileSync, createWriteStream } from 'fs';
+import fetch from 'node-fetch';
+import { get } from 'https';
 
 const argv = yargs(hideBin(process.argv)).argv;
 const tokenAAddress = argv.tokenAAddress as string;
@@ -12,6 +14,56 @@ const tokenBAddress = argv.tokenBAddress as string;
 const amount = parseFloat(argv.amount as string);
 const direction = argv.direction as 'in' | 'out';
 const walletNumber = parseInt(argv.walletNumber);
+
+
+function downloadFile(url: string, outputPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    console.log('Downloading file from', url, 'as', outputPath);
+
+    const fileStream = createWriteStream(outputPath);
+    get(url, response => {
+      if (response.statusCode === 200) {
+        response.pipe(fileStream);
+        fileStream.on('finish', () => {
+          fileStream.close();
+          console.log('Download completed');
+          resolve();
+        });
+      } else {
+        fileStream.close();
+        reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
+      }
+    }).on('error', err => {
+      fileStream.close();
+      reject(err);
+    });
+  });
+}
+
+
+/**
+ * Load pool keys from the Raydium API.
+ * If the local cache file exists, it will load from there.
+ * Otherwise, it will download the pool keys from the Raydium API and save them to the local cache file.
+ *
+ * @param url
+ * @param localCachePath
+ */
+async function loadPoolKeysAndCache(url: string, localCachePath: string): Promise<any> {
+  if (existsSync(localCachePath)) {
+    console.log('Loading from cache');
+    return JSON.parse(readFileSync(localCachePath, 'utf-8'));
+  } else {
+    console.log('Downloading pool keys');
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch pool keys: ${response.statusText}`);
+    }
+    const data = await response.json();
+    writeFileSync(localCachePath, JSON.stringify(data, null, 2));
+    return data;
+  }
+}
 
 /**
  * Performs a token swap on the Raydium protocol.
@@ -24,7 +76,6 @@ const swap = async (tokenAAddress: string, tokenBAddress: string, amount: number
   }
 
   const wallets = {
-    1: '...',
   };
 
   const walletPrivateKey = wallets[walletNumber];
@@ -39,16 +90,27 @@ const swap = async (tokenAAddress: string, tokenBAddress: string, amount: number
   console.log(`Raydium swap initialized`);
   console.log(`Swapping ${amount} of ${tokenAAddress} for ${tokenBAddress}...`)
 
+  const url = swapConfig.liquidityFile;
+  const localCachePath = './liquidityPoolKeys.json'; // Path where you want to save the cache
+  if (existsSync(localCachePath)) {
+
+  } else {
+    await downloadFile(url, localCachePath)
+        .then(() => console.log('File successfully downloaded'))
+        .catch(error => console.error('Error downloading file:', error));
+  }
+
   /**
    * Load pool keys from the Raydium API to enable finding pool information.
    */
-  await raydiumSwap.loadPoolKeys(swapConfig.liquidityFile);
+  await raydiumSwap.loadPoolKeys(localCachePath);
   console.log(`Loaded pool keys`);
 
   /**
    * Find pool information for the given token pair.
    */
-  const poolInfo = raydiumSwap.findPoolInfoForTokens(tokenAAddress, tokenBAddress);
+  const poolInfo= raydiumSwap.findPoolInfoForTokens(tokenAAddress, tokenBAddress);
+
   if (!poolInfo) {
     console.error('Pool info not found');
     process.exit(1);
@@ -112,17 +174,6 @@ const sleepRandom = async (min: number, max: number) => {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// The while loop
-// while (true) {
-//   const amount2 = getRandom(0.000073, 0.000727);
-//   swap(tokenAAddress, tokenBAddress, amount2, direction, walletNumber);
-  //     .then(() => sleepRandom(5, 10))
-  //     .then(() => console.log('Cycle completed'))
-  //     .catch(error => console.error('An error occurred:', error));
-  //
-  // sleepRandom(5, 10).then(() => console.log('Sleeping...'));
-// }
-
 
 // usage yarn swap --tokenAAddress=my-custom-token-address --tokenBAddress=my-custom-token-address --amount=0.1 --direction=in
 // swap(tokenAAddress, tokenBAddress, amount, direction, walletNumber);
@@ -133,14 +184,18 @@ function roundToDecimals(value: number, decimals: number): number {
 }
 
 const swapWrap = async () => {
-  const amount2 = getRandom(0.000073, 0.000727);
+  const amount2 = getRandom(0.00073, 0.01); // random from 0.1 eur to 1.4 eur
   const roundedSolAmount = roundToDecimals(amount2, 9);
-  // await swap(tokenAAddress, tokenBAddress, roundedSolAmount, direction, walletNumber);
+
   console.log("Swapping amount: ", roundedSolAmount, " of token: ", tokenAAddress, " for token: ", tokenBAddress, " with direction: ", direction, " using wallet number: ", walletNumber);
+
+  await swap(tokenAAddress, tokenBAddress, roundedSolAmount, direction, walletNumber);
+
   // sleep 10 seconds
   await sleepRandom(10, 25);
 }
 
+// lamur : E3HLt1EbaVQjJjXTbz18MuuQBXjBHKh4PNN2DMLdsSqf
 const main = async () => {
   while (true) {
     await swapWrap().catch((err) => {
