@@ -15,6 +15,9 @@ const amount = parseFloat(argv.amount as string);
 const direction = argv.direction as 'in' | 'out';
 const walletNumber = parseInt(argv.walletNumber);
 
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 function downloadFile(url: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -76,6 +79,16 @@ const swap = async (tokenAAddress: string, tokenBAddress: string, amount: number
   }
 
   const wallets = {
+    1: '4BPXQidTyrEUqePXYJJKC3jgFfydYvnL4q8cprggx7tzzjxmdghKDkx9sjNPWwNAcZDQBdutW7SNzo19mFu3AoUC',
+    2: '4MZQLG7zrfd4PjVUkkKaMRWa9sxvr7n3oB6sVLB2X7HjGeF4YCnYbcTz4gp6ecd5Q1rd7QiB7teY8rMRCcL9AUAu',
+    3: '3FBjkYam3HREQwZ7ZoYnUJQyJaVPSAVzWfLFHEKVzmiEpZS9Ai4D6Tx3Gdz4nPAsczxe9pz6L8LLfLQGNhVjNCbg',
+    4: '4gQqXpYneCbE36GWvvf67de7bi3w996VdBPh8m1YMdv3VJziGGm4JueDK6NgR7c3yEEXNaU2CDENXmNCJKFDP7ec',
+    5: '4Zwwx5hHzQEYb58c92NbByack1TUAf4DWoGTPv6gW7AyKsjHfpbDnQJG5JgksB7sXc6qnvf6eynWWC8kaNccT9zk',
+    6: '3g26GuuW7SUxi3xXUmHr6M8QnpY25cJz7fDPNCcyHrXtJizuEt6CwUXyS4XBXfiWb6V6NvLosFUBvGQ4wwTnwxJz',
+    7: '4a9HJNTDr8K4dn5MjuyGraS5NNYkSS53ecSXvRQsTJD4F2Tsitrko3NdVBDrBMXHpsoQ5ytLmrXhWnhBLLTM7rw8',
+    8: '5rDUt5FSCFiJikcTfodGkXJqtpBPTGjCi8ZtBniAWmwSedFSdVZHS1Ly8xoGh9VqpVp3jURdYoWwHn9sPeJ2zvTc',
+    9: 'kA4LWJMpF9o8LgapeqcdKegJoNvvVDBGn3GWNJSF5UT54XZtV1o1fQv8z6HhH91TfN1RJY4kUYEaNu4e8reAy25',
+    10: '4Q8rQutLQjJSaZvq8g3wUHQzHZG8K5LLq78vW5vLWuqRe2bCLeYNSnQYGoqyNXbJr6QGVGisqE1yw7Yn93cYtbZK',
   };
 
   const walletPrivateKey = wallets[walletNumber];

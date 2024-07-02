@@ -16,6 +16,10 @@ import bs58 from 'bs58'
 import { promises as fsPromises } from 'fs';
 import fetch from 'node-fetch';
 
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 /**
  * Class representing a Raydium Swap operation.
  */
@@ -122,7 +126,7 @@ class RaydiumSwap {
   ): Promise<{transaction: Transaction | VersionedTransaction, swapDetails: any}> {
     const directionIn = poolKeys.quoteMint.toString() == toToken
     const swapDetails = await this.calcAmountOut(poolKeys, amount, directionIn)
-    console.log(swapDetails);
+    // console.log(swapDetails);
 
     const minAmountOut = swapDetails.minAmountOut
     const amountIn = swapDetails.amountIn
